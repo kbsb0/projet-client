@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Pixel Art Client</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; }
+
+        .top-info { display: flex; gap: 20px; align-items: center; margin: 15px 0; }
+        .timer { font-weight: bold; color: #e74c3c; font-size: 1.5em; }
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+
+        .grid-container { display: grid; grid-template-columns: repeat(15, 30px); gap: 1px; background: #ccc; border: 5px solid #333; user-select: none; }
+        .cell { width: 30px; height: 30px; background: white; cursor: pointer; }
+        .cell.hint { background-color: #dcdcdc; }
+
+        .palette { display: flex; gap: 10px; margin: 15px 0; }
+        .color-choice { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .color-choice.active { transform: scale(1.2); border-color: #333; }
+
+        button { padding: 10px 20px; cursor: pointer; font-size: 16px; font-weight: bold; border:none; border-radius: 4px; color: white; margin-top: 15px; }
+        .btn-send { background-color: #2ed573; }
+        .btn-clear { background-color: #ff4757; }
+        #message { font-weight: bold; margin-top: 15px; height: 20px; text-align: center;}
+    </style>
+</head>
+<body>
+
+<h1>Pixel Challenge</h1>
+
+<div class="top-info">
+    <div class="timer" id="client-timer">--:--</div>
+    <input type="text" id="username" placeholder="Votre Prénom" maxlength="15">
+</div>
+
+<div class="palette">
+    <!-- PAS DE BLANC ICI -->
+    <div class="color-choice active" style="background-color: #3498db;" data-color="#3498db"></div> <!-- Bleu -->
+    <div class="color-choice" style="background-color: #e74c3c;" data-color="#e74c3c"></div> <!-- Rouge -->
+    <div class="color-choice" style="background-color: #f1c40f;" data-color="#f1c40f"></div> <!-- Jaune -->
+    <div class="color-choice" style="background-color: #2ecc71;" data-color="#2ecc71"></div> <!-- Vert -->
+    <div class="color-choice" style="background-color: #9b59b6;" data-color="#9b59b6"></div> <!-- Violet -->
+    <div class="color-choice" style="background-color: #34495e;" data-color="#34495e"></div> <!-- Noir -->
+</div>
+
+<div class="grid-container" id="grid"></div>
+
+<div class="controls">
+    <button class="btn-clear" onclick="clearGrid()">Tout Effacer</button>
+    <button class="btn-send" onclick="sendGrid()">ENVOYER</button>
+</div>
+
+<div id="message"></div>
+
+<script>
+    const SERVER_URL = "{{ .ServerAPI }}";
+    let currentColor = '#3498db';
+    let currentModelId = -1;
+    let localTimeLeft = 0;
+
+    // Gestion Palette
+    document.querySelectorAll('.color-choice').forEach(c => {
+        c.addEventListener('click', () => {
+            document.querySelectorAll('.color-choice').forEach(x => x.classList.remove('active'));
+            c.classList.add('active');
+            currentColor = c.dataset.color;
+        });
+    });
+
+    // POLLING SERVER
+    async function syncState() {
+        try {
+            const res = await fetch(SERVER_URL + '/api/state');
+            const data = await res.json();
+
+            localTimeLeft = data.timeLeft;
+            updateTimerDisplay();
+
+            if (currentModelId !== -1 && data.currentModel !== currentModelId) {
+                alert("Temps écoulé ! Nouveau dessin.");
+                currentModelId = data.currentModel;
+                drawGrid(data.targetGrid);
+                document.getElementById('message').innerText = "";
+            }
+            else if (currentModelId === -1) {
+                currentModelId = data.currentModel;
+                drawGrid(data.targetGrid);
+            }
+        } catch (e) { console.error(e); }
+    }
+    setInterval(syncState, 1000);
+    syncState();
+
+    function updateTimerDisplay() {
+        let t = Math.floor(localTimeLeft);
+        let m = Math.floor(t / 60);
+        let s = t % 60;
+        document.getElementById('client-timer').innerText = (m<10?'0':'')+m + ":" + (s<10?'0':'')+s;
+    }
+
+    function drawGrid(model) {
+        const container = document.getElementById('grid');
+        container.innerHTML = '';
+        for(let r=0; r<15; r++) {
+            for(let c=0; c<15; c++) {
+                const d = document.createElement('div');
+                d.className = 'cell' + (model[r][c] === 1 ? ' hint' : '');
+
+                // GESTION DU CLIC ET DE L'EFFACEMENT
+                d.onclick = function() {
+                    // Si la case a déjà une couleur (style.backgroundColor n'est pas vide)
+                    // Alors on l'efface
+                    if (this.style.backgroundColor && this.style.backgroundColor !== "") {
+                        this.style.backgroundColor = "";
+                    } else {
+                        // Sinon on applique la couleur courante
+                        this.style.backgroundColor = currentColor;
+                    }
+                };
+                container.appendChild(d);
+            }
+        }
+    }
+
+    function clearGrid() {
+        document.querySelectorAll('.cell').forEach(c => c.style.backgroundColor = '');
+    }
+
+    async function sendGrid() {
+        const name = document.getElementById('username').value.trim();
+        if(!name) { alert("Prénom requis !"); return; }
+
+        // Disable button pour eviter double clic
+        document.getElementById('message').innerText = "Envoi...";
+
+        let grid = [];
+        for(let r=0; r<15; r++) {
+            let row = [];
+            for(let c=0; c<15; c++) {
+                // On récupère la div correspondante dans l'ordre du DOM
+                // (Attention, si on recrée la grille c'est risqué, mieux vaut utiliser l'index)
+                let cell = document.getElementById('grid').children[r*15 + c];
+                row.push(cell.style.backgroundColor || "");
+            }
+            grid.push(row);
+        }
+
+        try {
+            const res = await fetch(SERVER_URL + '/api/submit', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ grid: grid, name: name })
+            });
+            const data = await res.json();
+            const msg = document.getElementById('message');
+            msg.innerText = data.message;
+            msg.style.color = data.success ? "#2ed573" : "#ff4757";
+        } catch(e) {
+            document.getElementById('message').innerText = "Erreur serveur";
+        }
+    }
+</script>
+</body>
+</html>
