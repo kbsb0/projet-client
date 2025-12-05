@@ -90,23 +90,16 @@
 
     // 2. COMPTE A REBOURS LOCAL
     function countdown() {
-        // On décrémente seulement si on a du temps
         if (localTimeLeft > 0) {
             localTimeLeft--;
             updateTimerDisplay();
         }
-
-        // CORRECTION ICI : On vérifie si le temps est <= 0 en dehors du bloc précédent
-        // Si le timer est à 0 (ou moins), on appelle l'API pour savoir si la nouvelle partie a commencé
         if (localTimeLeft <= 0) {
             syncState();
         }
     }
 
-    // On lance le décompte chaque seconde
     setInterval(countdown, 1000);
-
-    // Premier appel au chargement (Refresh)
     syncState();
 
     function updateTimerDisplay() {
@@ -124,13 +117,24 @@
             for(let c=0; c<15; c++) {
                 const d = document.createElement('div');
                 d.className = 'cell' + (model[r][c] === 1 ? ' hint' : '');
+
+                // --- MODIFICATION ICI ---
                 d.onclick = function() {
-                    if (this.style.backgroundColor && this.style.backgroundColor !== "") {
+                    // 1. On mémorise la couleur qu'avait la case AVANT le clic
+                    const previousColor = this.style.backgroundColor;
+
+                    // 2. On applique la couleur sélectionnée
+                    this.style.backgroundColor = currentColor;
+
+                    // 3. On vérifie : si la couleur résultante est la même que l'ancienne,
+                    // cela veut dire qu'on a cliqué avec la MÊME couleur -> Donc on efface.
+                    // (Si c'était une couleur différente, previousColor != currentColor, donc on garde la nouvelle).
+                    if (this.style.backgroundColor === previousColor) {
                         this.style.backgroundColor = "";
-                    } else {
-                        this.style.backgroundColor = currentColor;
                     }
                 };
+                // ------------------------
+
                 container.appendChild(d);
             }
         }
@@ -167,7 +171,6 @@
             msg.innerText = data.message;
             msg.style.color = data.success ? "#2ed573" : "#ff4757";
 
-            // 3. APPEL API APRES ENVOI
             await syncState();
 
         } catch(e) {
