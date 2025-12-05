@@ -34,13 +34,12 @@
 </div>
 
 <div class="palette">
-    <!-- PAS DE BLANC ICI -->
-    <div class="color-choice active" style="background-color: #3498db;" data-color="#3498db"></div> <!-- Bleu -->
-    <div class="color-choice" style="background-color: #e74c3c;" data-color="#e74c3c"></div> <!-- Rouge -->
-    <div class="color-choice" style="background-color: #f1c40f;" data-color="#f1c40f"></div> <!-- Jaune -->
-    <div class="color-choice" style="background-color: #2ecc71;" data-color="#2ecc71"></div> <!-- Vert -->
-    <div class="color-choice" style="background-color: #9b59b6;" data-color="#9b59b6"></div> <!-- Violet -->
-    <div class="color-choice" style="background-color: #34495e;" data-color="#34495e"></div> <!-- Noir -->
+    <div class="color-choice active" style="background-color: #3498db;" data-color="#3498db"></div>
+    <div class="color-choice" style="background-color: #e74c3c;" data-color="#e74c3c"></div>
+    <div class="color-choice" style="background-color: #f1c40f;" data-color="#f1c40f"></div>
+    <div class="color-choice" style="background-color: #2ecc71;" data-color="#2ecc71"></div>
+    <div class="color-choice" style="background-color: #9b59b6;" data-color="#9b59b6"></div>
+    <div class="color-choice" style="background-color: #34495e;" data-color="#34495e"></div>
 </div>
 
 <div class="grid-container" id="grid"></div>
@@ -67,7 +66,7 @@
         });
     });
 
-    // POLLING SERVER
+    // 1. APPEL API STATE
     async function syncState() {
         try {
             const res = await fetch(SERVER_URL + '/api/state');
@@ -88,11 +87,31 @@
             }
         } catch (e) { console.error(e); }
     }
-    setInterval(syncState, 1000);
+
+    // 2. COMPTE A REBOURS LOCAL
+    function countdown() {
+        // On décrémente seulement si on a du temps
+        if (localTimeLeft > 0) {
+            localTimeLeft--;
+            updateTimerDisplay();
+        }
+
+        // CORRECTION ICI : On vérifie si le temps est <= 0 en dehors du bloc précédent
+        // Si le timer est à 0 (ou moins), on appelle l'API pour savoir si la nouvelle partie a commencé
+        if (localTimeLeft <= 0) {
+            syncState();
+        }
+    }
+
+    // On lance le décompte chaque seconde
+    setInterval(countdown, 1000);
+
+    // Premier appel au chargement (Refresh)
     syncState();
 
     function updateTimerDisplay() {
         let t = Math.floor(localTimeLeft);
+        if (t < 0) t = 0;
         let m = Math.floor(t / 60);
         let s = t % 60;
         document.getElementById('client-timer').innerText = (m<10?'0':'')+m + ":" + (s<10?'0':'')+s;
@@ -105,15 +124,10 @@
             for(let c=0; c<15; c++) {
                 const d = document.createElement('div');
                 d.className = 'cell' + (model[r][c] === 1 ? ' hint' : '');
-
-                // GESTION DU CLIC ET DE L'EFFACEMENT
                 d.onclick = function() {
-                    // Si la case a déjà une couleur (style.backgroundColor n'est pas vide)
-                    // Alors on l'efface
                     if (this.style.backgroundColor && this.style.backgroundColor !== "") {
                         this.style.backgroundColor = "";
                     } else {
-                        // Sinon on applique la couleur courante
                         this.style.backgroundColor = currentColor;
                     }
                 };
@@ -130,15 +144,12 @@
         const name = document.getElementById('username').value.trim();
         if(!name) { alert("Prénom requis !"); return; }
 
-        // Disable button pour eviter double clic
         document.getElementById('message').innerText = "Envoi...";
 
         let grid = [];
         for(let r=0; r<15; r++) {
             let row = [];
             for(let c=0; c<15; c++) {
-                // On récupère la div correspondante dans l'ordre du DOM
-                // (Attention, si on recrée la grille c'est risqué, mieux vaut utiliser l'index)
                 let cell = document.getElementById('grid').children[r*15 + c];
                 row.push(cell.style.backgroundColor || "");
             }
@@ -155,6 +166,10 @@
             const msg = document.getElementById('message');
             msg.innerText = data.message;
             msg.style.color = data.success ? "#2ed573" : "#ff4757";
+
+            // 3. APPEL API APRES ENVOI
+            await syncState();
+
         } catch(e) {
             document.getElementById('message').innerText = "Erreur serveur";
         }
