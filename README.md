@@ -370,4 +370,6 @@ func FetchStateFromRemote() ([]byte, int, error) {
 ```
 
 **Vérification :**
-Pour tester que votre proxy fonctionne, assurez-vous que le serveur distant est lancé, puis accédez à [http://localhost:8081/](http://localhost:8081/). Vous devriez voir apparaître de nouveau la grille, mais cette fois-ci avec le dessin à réaliser.
+Décommenter la partie //1.3 dans index.html puis relancer votre serveur.
+Pour tester que votre proxy fonctionne, assurez-vous que le serveur distant est lancé, puis accédez à [http://localhost:8081/](http://localhost:8081/). 
+Vous devriez voir apparaître de nouveau la grille, mais cette fois-ci avec le dessin à réaliser.
