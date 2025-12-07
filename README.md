@@ -175,6 +175,7 @@ Nous allons créer une route "Proxy" : votre navigateur demandera l'info à votr
 4.  Créez un contrôleur `GetProxyState` (dans `pixel_controller.go`) qui appelle votre service et retourne le JSON brut au client.
 
 Fonction FetchStateFromRemote
+
 But : Récupérer l’état du serveur distant /api/state et renvoyer au contrôleur les informations nécessaires pour répondre au client.
 
 | Valeur   | Type     | Signification                                                         |
