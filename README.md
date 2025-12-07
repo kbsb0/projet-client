@@ -57,7 +57,7 @@ Avant d'intégrer les templates, nous allons créer un serveur minimaliste pour 
 4.  Ouvrez votre navigateur à l’adresse : [http://localhost:8081](http://localhost:8081). Vous devriez voir le message de bienvenue.
 
 
-### Étape 1.3 : Structure MVC et Rendu HTML
+### Étape 1.3 : Structure et Rendu HTML
 Nous allons maintenant structurer le projet et afficher l'interface graphique.
 
 ---
