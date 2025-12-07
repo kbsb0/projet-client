@@ -5,19 +5,15 @@
     <title>Pixel Art Client</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; }
-
         .top-info { display: flex; gap: 20px; align-items: center; margin: 15px 0; }
         .timer { font-weight: bold; color: #e74c3c; font-size: 1.5em; }
         input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-
         .grid-container { display: grid; grid-template-columns: repeat(15, 30px); gap: 1px; background: #ccc; border: 5px solid #333; user-select: none; }
         .cell { width: 30px; height: 30px; background: white; cursor: pointer; }
         .cell.hint { background-color: #dcdcdc; }
-
         .palette { display: flex; gap: 10px; margin: 15px 0; }
         .color-choice { width: 35px; height: 35px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .color-choice.active { transform: scale(1.2); border-color: #333; }
-
         button { padding: 10px 20px; cursor: pointer; font-size: 16px; font-weight: bold; border:none; border-radius: 4px; color: white; margin-top: 15px; }
         .btn-send { background-color: #2ed573; }
         .btn-clear { background-color: #ff4757; }
@@ -52,10 +48,16 @@
 <div id="message"></div>
 
 <script>
-    const SERVER_URL = "{{ .ServerAPI }}";
+    // CHANGEMENT MAJEUR : On pointe vers nos routes locales "/proxy/..."
+    // Plus besoin de l'adresse absolue http://localhost:8080
+    const API_STATE_URL = "/proxy/state";
+    const API_SUBMIT_URL = "/proxy/submit";
+
     let currentColor = '#3498db';
     let currentModelId = -1;
     let localTimeLeft = 0;
+    let syncInProgress = false;
+
 
     // Gestion Palette
     document.querySelectorAll('.color-choice').forEach(c => {
@@ -66,26 +68,24 @@
         });
     });
 
-    // 1. APPEL API STATE
-    async function syncState() {
-        try {
-            const res = await fetch(SERVER_URL + '/api/state');
-            const data = await res.json();
 
+
+    async function syncState() {
+        if(syncInProgress) return;
+        syncInProgress = true;
+        try {
+            const res = await fetch(API_STATE_URL);
+            if (!res.ok) throw new Error("Erreur proxy");
+            const data = await res.json();
             localTimeLeft = data.timeLeft;
             updateTimerDisplay();
-
-            if (currentModelId !== -1 && data.currentModel !== currentModelId) {
-                alert("Temps écoulé ! Nouveau dessin.");
-                currentModelId = data.currentModel;
-                drawGrid(data.targetGrid);
-                document.getElementById('message').innerText = "";
-            }
-            else if (currentModelId === -1) {
-                currentModelId = data.currentModel;
-                drawGrid(data.targetGrid);
-            }
-        } catch (e) { console.error(e); }
+            currentModelId = currentModelId === -1 ? data.currentModel : currentModelId;
+            drawGrid(data.targetGrid);
+        } catch(e) {
+            console.error("Erreur sync:", e);
+        } finally {
+            syncInProgress = false;
+        }
     }
 
     // 2. COMPTE A REBOURS LOCAL
@@ -118,23 +118,13 @@
                 const d = document.createElement('div');
                 d.className = 'cell' + (model[r][c] === 1 ? ' hint' : '');
 
-                // --- MODIFICATION ICI ---
                 d.onclick = function() {
-                    // 1. On mémorise la couleur qu'avait la case AVANT le clic
                     const previousColor = this.style.backgroundColor;
-
-                    // 2. On applique la couleur sélectionnée
                     this.style.backgroundColor = currentColor;
-
-                    // 3. On vérifie : si la couleur résultante est la même que l'ancienne,
-                    // cela veut dire qu'on a cliqué avec la MÊME couleur -> Donc on efface.
-                    // (Si c'était une couleur différente, previousColor != currentColor, donc on garde la nouvelle).
                     if (this.style.backgroundColor === previousColor) {
                         this.style.backgroundColor = "";
                     }
                 };
-                // ------------------------
-
                 container.appendChild(d);
             }
         }
@@ -161,11 +151,15 @@
         }
 
         try {
-            const res = await fetch(SERVER_URL + '/api/submit', {
+            // Appel via notre Proxy (POST)
+            const res = await fetch(API_SUBMIT_URL, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ grid: grid, name: name })
             });
+
+            if (!res.ok) throw new Error("Erreur serveur");
+
             const data = await res.json();
             const msg = document.getElementById('message');
             msg.innerText = data.message;
@@ -174,7 +168,8 @@
             await syncState();
 
         } catch(e) {
-            document.getElementById('message').innerText = "Erreur serveur";
+            document.getElementById('message').innerText = "Erreur de communication";
+            console.error(e);
         }
     }
 </script>
