@@ -11,7 +11,7 @@ L'objectif de ce TP est de développer un **client API intermédiaire (Proxy)**.
 **Concepts abordés :** Routing avec Gin, architecture MVC, Rendu HTML, appels HTTP (Client), JSON Binding.
 
 
-## 🟢 Partie 1 : Initialisation & Routing (40 min)
+## 🟢 Partie 1 : Initialisation & Routing (30 min)
 
 *Objectif : Mettre en place le serveur web, vérifier son fonctionnement et servir les fichiers HTML.*
 
