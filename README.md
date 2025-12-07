@@ -67,6 +67,8 @@ Nous allons maintenant structurer le projet et afficher l'interface graphique.
 Avant de commencer le développement Go, vous devez mettre en place l'interface utilisateur.
 Créez un dossier nommé `templates` à la racine de votre projet et ajoutez-y les deux fichiers suivants.
 
+
+index.hmtl :
 ```html
 <!DOCTYPE html>
 <html>
@@ -125,6 +127,8 @@ Créez un dossier nommé `templates` à la racine de votre projet et ajoutez-y l
 </html>
 ```
 
+
+history.hmtl :
 ```html
 <!DOCTYPE html>
 <html>
