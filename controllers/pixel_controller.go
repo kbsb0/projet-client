@@ -71,3 +71,10 @@ func GetLocalHistory(c *gin.Context) {
 
 	c.JSON(http.StatusOK, history)
 }
+
+// RenderHistory affiche la page d'historique
+func RenderHistory(c *gin.Context) {
+	c.HTML(http.StatusOK, "history.html", gin.H{
+		"title": "Historique des dessins",
+	})
+}

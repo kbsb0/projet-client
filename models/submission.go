@@ -10,8 +10,8 @@ import (
 type Submission struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
 	Name      string         `json:"name" binding:"required"`
-	GridData  string         `json:"-" gorm:"type:text"` // On stocke la grille en string dans la BDD
-	Grid      [][]string     `json:"grid" gorm:"-"`      // Ignoré par GORM, utilisé par JSON
+	GridData  string         `json:"grid_data" gorm:"type:text"`
+	Grid      [][]string     `json:"grid" gorm:"-"` // Ignoré par GORM, utilisé par JSON
 	CreatedAt time.Time      `json:"created_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }

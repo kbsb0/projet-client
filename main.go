@@ -36,6 +36,8 @@ func main() {
 		api.GET("/history", controllers.GetLocalHistory)
 	}
 
+	r.GET("/history", controllers.RenderHistory)
+
 	// 6. Lancer le serveur
 	r.Run(":8081")
 }

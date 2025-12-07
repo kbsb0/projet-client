@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Historique Pixel Art</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
+
+        h1 { text-align: center; color: #333; }
+
+        .nav-link { display: block; text-align: center; margin-bottom: 30px; text-decoration: none; color: #3498db; font-weight: bold; }
+        .nav-link:hover { text-decoration: underline; }
+
+        /* Conteneur des cartes */
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Une carte individuelle */
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #666;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .user-name { font-weight: bold; color: #333; }
+
+        /* La mini grille */
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(15, 10px); /* Cellules de 10px */
+            gap: 0;
+            border: 2px solid #333;
+            background: #ccc;
+        }
+
+        .mini-cell {
+            width: 10px;
+            height: 10px;
+            background-color: white;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🏛️ Galerie des Œuvres</h1>
+<a href="/" class="nav-link">← Retour au jeu</a>
+
+<div class="gallery" id="gallery-container">
+    <!-- Les cartes seront injectées ici par JS -->
+    <p style="text-align:center; width:100%;">Chargement des données...</p>
+</div>
+
+<script>
+    // URL de l'API locale qu'on a créée dans l'étape précédente
+    const API_HISTORY_URL = "/proxy/history";
+
+    async function loadHistory() {
+        try {
+            const res = await fetch(API_HISTORY_URL);
+            if (!res.ok) throw new Error("Erreur réseau");
+
+            const submissions = await res.json();
+            renderGallery(submissions);
+        } catch (e) {
+            document.getElementById('gallery-container').innerHTML =
+                `<p style="color:red; text-align:center;">Impossible de charger l'historique : ${e.message}</p>`;
+        }
+    }
+
+    function renderGallery(submissions) {
+        const container = document.getElementById('gallery-container');
+        container.innerHTML = '';
+
+        if (submissions.length === 0) {
+            container.innerHTML = '<p>Aucune donnée en base.</p>';
+            return;
+        }
+
+        submissions.forEach(sub => {
+            // 1. Création de la carte
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            // 2. Parsing de la date
+            const dateObj = new Date(sub.created_at);
+            const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+            // 3. En-tête de la carte
+            card.innerHTML = `
+                <div class="card-header">
+                    <span class="user-name">👤 ${sub.name}</span>
+                    <span>${dateStr}</span>
+                </div>
+            `;
+
+            // 4. Génération de la mini-grille
+            // IMPORTANT : Dans la BDD, la grille est stockée en string ("[[...]]"), il faut la parser
+            let gridData = [];
+            try {
+                // Si sub.GridData est vide, on met une grille vide
+                gridData = sub.GridData ? JSON.parse(sub.GridData) : [];
+            } catch(e) {
+                console.error("Erreur parsing grille", e);
+            }
+
+            const gridDiv = document.createElement('div');
+            gridDiv.className = 'mini-grid';
+
+            // Dessiner les 15x15 cellules
+            // Si la grille récupérée n'est pas complète, on gère l'affichage vide
+            for(let r=0; r<15; r++) {
+                for(let c=0; c<15; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'mini-cell';
+
+                    // On vérifie si la donnée existe à ces coordonnées
+                    if(gridData[r] && gridData[r][c]) {
+                        cell.style.backgroundColor = gridData[r][c];
+                    }
+                    gridDiv.appendChild(cell);
+                }
+            }
+
+            card.appendChild(gridDiv);
+            container.appendChild(card);
+        });
+    }
+
+    // Lancer le chargement au démarrage
+    loadHistory();
+</script>
+
+</body>
+</html>
