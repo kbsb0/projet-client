@@ -317,7 +317,8 @@ history.hmtl :
 
 > 💡 **Aide :** La méthode `c.HTML(http.StatusOK, "nom_du_fichier", data)` permet de rendre une vue.
 
-Une fois cette étape terminée, en rafraîchissant la page [http://localhost:8081](http://localhost:8081), vous devriez voir apparaître la grille de dessin.
+Une fois cette étape terminée, relacner votre server.
+En rafraîchissant la page [http://localhost:8081](http://localhost:8081), vous devriez voir apparaître la grille de dessin.
 
 ### Étape 1.4 : Service Proxy & Récupération de l'état
 Vous avez la grille, mais vous ne savez pas encore quel dessin réaliser. Cette information est détenue par le serveur distant (API du professeur).
