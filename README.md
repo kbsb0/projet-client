@@ -174,6 +174,16 @@ Nous allons créer une route "Proxy" : votre navigateur demandera l'info à votr
 3.  Dans `main.go`, créez un groupe de routes `/proxy` et ajoutez la route `GET /proxy/state`.
 4.  Créez un contrôleur `GetProxyState` (dans `pixel_controller.go`) qui appelle votre service et retourne le JSON brut au client.
 
+Fonction FetchStateFromRemote
+But : Récupérer l’état du serveur distant /api/state et renvoyer au contrôleur les informations nécessaires pour répondre au client.
+
+| Valeur   | Type     | Signification                                                         |
+| -------- | -------- | --------------------------------------------------------------------- |
+| `[]byte` | `body`   | Contenu brut de la réponse HTTP (JSON du serveur distant)             |
+| `int`    | `status` | Code HTTP de la réponse distante (ex : 200, 404, 503)                 |
+| `error`  | `err`    | Erreur éventuelle lors de la requête (connexion impossible, timeout…) |
+
+
 **Code squelette pour `services/api_proxy.go` :**
 ```go
 package services
