@@ -1,23 +1,26 @@
 package main
 
 import (
+	"ari2-client/controllers"
 	"github.com/gin-gonic/gin"
-	"net/http"
-)
-
-const (
-	ServerAPI  = "http://localhost:8080" // Adresse du vrai serveur
-	ClientPort = ":8081"
 )
 
 func main() {
+	// Création du routeur avec les middlewares par défaut (logger + recovery)
 	r := gin.Default()
+
+	// Charger les templates HTML
 	r.LoadHTMLGlob("templates/*")
 
-	// On sert juste la page, en injectant l'URL de l'API Serveur
-	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{"ServerAPI": ServerAPI})
-	})
+	// Route d'accueil utilisant votre contrôleur
+	r.GET("/", controllers.RenderHome)
 
-	r.Run(ClientPort)
+	// Groupe /proxy
+	proxy := r.Group("/proxy")
+	{
+		proxy.GET("/state", controllers.GetProxyState)
+	}
+
+	// Lancement du serveur sur le port 8081
+	r.Run(":8081")
 }
