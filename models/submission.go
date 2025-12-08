@@ -15,3 +15,9 @@
         Success bool   `json:"success"`
         Message string `json:"message"`
     }
+
+type RemoteState struct {
+	TimeLeft     float64 `json:"timeLeft"`
+	CurrentModel int     `json:"currentModel"`
+	TargetGrid   [][]int `json:"targetGrid"` // Le serveur renvoie des 0 et 1
+}

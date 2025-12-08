@@ -20,6 +20,8 @@ func main() {
 	r.POST("/register", controllers.Register)
 	r.GET("/logout", controllers.Logout)
 
+
+
 	// --- ROUTES PROTÉGÉES (Nécessitent une connexion) ---
 	// On crée un groupe qui utilise le middleware d'Auth
 	protected := r.Group("/")
@@ -43,6 +45,7 @@ func main() {
 			api.GET("/state", controllers.GetProxyState)
 			api.POST("/submit", controllers.SubmitProxyGrid)
 			api.GET("/history", controllers.GetLocalHistory)
+			api.POST("/cheat", controllers.CheatHandler)
 		}
 	}
 

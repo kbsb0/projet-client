@@ -57,8 +57,14 @@
 <div class="grid-container" id="grid"></div>
 
 <div class="controls">
-  <button class="btn-clear" onclick="clearGrid()">Tout Effacer</button>
-  <button class="btn-send" onclick="sendGrid()">ENVOYER</button>
+  <!-- Dans templates/index.html -->
+  <div class="controls">
+    <button class="btn-clear" onclick="clearGrid()">Tout Effacer</button>
+    <button class="btn-send" onclick="sendGrid()">ENVOYER</button>
+
+    <!-- NOUVEAU BOUTON -->
+    <button style="background-color: #8e44ad;" onclick="cheat()">😈 TRICHER</button>
+  </div>
 </div>
 
 <div id="message"></div>
@@ -162,6 +168,27 @@
       }
     }
   }
+
+
+
+  async function cheat() {
+    const msgDiv = document.getElementById('message');
+    msgDiv.innerText = "Lancement des robots...";
+    msgDiv.style.color = "#8e44ad";
+
+    try {
+        // On appelle la route Go qui va gérer la concurrence
+        const res = await fetch("/proxy/cheat", {
+            method: 'POST'
+        });
+
+        const data = await res.json();
+        msgDiv.innerText = data.message;
+
+    } catch (e) {
+        msgDiv.innerText = "Erreur triche : " + e.message;
+    }
+}
 
   function hexToRgb(hex) {
     var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
