@@ -8,20 +8,32 @@ import (
 	"time"
 )
 
+// Le serveur distant tourne sur le port 8080
 const ServerAPI = "http://localhost:8080"
 
-// Client HTTP réutilisable avec timeout
-var httpClient = &http.Client{
-	Timeout: 5 * time.Second,
-}
+var httpClient = &http.Client{Timeout: 5 * time.Second}
 
 func FetchStateFromRemote() ([]byte, int, error) {
-	resp, err := httpClient.Get(ServerAPI + "/api/state")
+	// Créer la requête GET vers le serveur distant
+	req, err := http.NewRequest(http.MethodGet, ServerAPI+"/api/state", nil)
 	if err != nil {
-		return nil, http.StatusServiceUnavailable, err
+		return nil, 0, err
+	}
+
+	// Envoyer la requête
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, 0, err
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+
+	// Lire le corps de la réponse
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, err
+	}
+
+	// Retourner corps, status et erreur = nil
 	return body, resp.StatusCode, nil
 }
 

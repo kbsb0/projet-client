@@ -1,24 +1,17 @@
 package models
 
-import (
-	"gorm.io/gorm"
-	"time"
-)
+import "time"
 
-// Submission représente un envoi de grille
-// Elle sert à la fois pour le binding JSON et la BDD SQLite
 type Submission struct {
-	ID        uint           `gorm:"primaryKey" json:"id"`
-	Name      string         `json:"name" binding:"required"`
-	GridData  string         `json:"grid_data" gorm:"type:text"`
-	Grid      [][]string     `json:"grid" gorm:"-"` // Ignoré par GORM, utilisé par JSON
-	CreatedAt time.Time      `json:"created_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	ID        uint       `gorm:"primaryKey"`
+	Name      string     `json:"name" binding:"required"`
+	Grid      [][]string `json:"grid" gorm:"-"`
+	GridData  string     `json:"grid_data"`
+	CreatedAt time.Time  `json:"created_at"`
 }
 
-// APIResponse structure standard pour tes réponses JSON
+// Structure utilitaire pour les réponses API
 type APIResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`
-	Data    any    `json:"data,omitempty"`
 }
