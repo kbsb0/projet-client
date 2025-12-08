@@ -9,7 +9,7 @@ import (
 )
 
 // Le serveur distant tourne sur le port 8080
-const ServerAPI = "http://localhost:8080"
+const ServerAPI = "http://172.18.13.203:8080"
 
 var httpClient = &http.Client{Timeout: 5 * time.Second}
 
