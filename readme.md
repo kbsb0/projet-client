@@ -1,245 +1,208 @@
+C'est noté ! Voici le sujet de TP réécrit sous forme de **consignes pédagogiques**. Je ne donne pas le code final du Go, mais les squelettes (`boilerplate`) et les instructions pour que tu puisses l'implémenter toi-même.
 
-## 🟠 Partie 2 : Persistance des données & Communication (50 min)
+Je fournis par contre les fichiers HTML complets (comme demandé) pour que tu n'aies pas à faire de front-end.
 
-*Objectif : Rendre l'application interactive. Vous allez devoir réceptionner les données envoyées par le navigateur, les valider, les sauvegarder dans une base de données locale (SQLite) pour garder une trace, et enfin les transmettre au serveur distant.*
+---
 
-### Étape 2.1 : Les Modèles de données
-Pour gérer les échanges, vous devez définir deux structures dans le fichier `models/submission.go`.
+# 🔵 TP Partie 3 : Authentification & Sécurité (Sujet)
 
-**1. La structure de soumission (`Submission`)**
-Elle représente le dessin envoyé par l'utilisateur.
-*   `ID` (uint, clé primaire).
-*   `Name` (string) : Obligatoire (`binding:"required"`).
-*   `Grid` ([][]string) : Reçoit la grille brute depuis le JSON. **Attention :** SQL ne gère pas ce type. Utilisez le tag `gorm:"-"` pour l'ignorer en base.
-*   `GridData` (string) : Servira à stocker la grille convertie en texte (JSON stringifié) dans la BDD.
-*   `CreatedAt` (time.Time).
+**Durée estimée :** 1h15
+**Objectif :** Transformer notre application de Pixel Art "naïve" (où n'importe qui peut mettre n'importe quel nom) en une application sécurisée.
+Nous allons implémenter :
+1.  Une base de données d'utilisateurs.
+2.  Un système d'inscription (hashage de mot de passe).
+3.  Un système de login (JWT stocké dans un Cookie).
+4.  Un middleware pour protéger les routes.
+5.  L'utilisation de l'identité connectée pour signer les dessins.
 
-**2. La structure de réponse API (`APIResponse`)**
-Le frontend (le fichier HTML/JS fourni) s'attend à recevoir une réponse JSON standardisée pour afficher les messages dans la zone "status".
-Définissez une structure `APIResponse` contenant :
-*   `Success` (bool) : Indique si l'opération a réussi.
-*   `Message` (string) : Le texte explicatif qui s'affichera sur l'écran de l'utilisateur.
-*   *N'oubliez pas les tags json correspondants (`json:"success"`, etc.).*
+---
 
-### Étape 2.2 : Connexion à la Base de Données
-Utilisez un singleton (variable globale) pour gérer la connexion.
+## 📂 Pré-requis : Mise en place des fichiers
 
-1.  Créez le fichier `database/db.go`.
-2.  Déclarez une variable globale `DB` de type `*gorm.DB`.
-3.  Implémentez une fonction `Connect()` qui :
-    *   Ouvre une connexion SQLite (fichier `pixel.db`).
-    *   Utilise `DB.AutoMigrate(...)` pour créer la table `Submission`.
-    *   Gère les erreurs de connexion.
-4.  **Intégration dans le main :** Allez immédiatement dans votre fichier `main.go` et ajoutez l'appel à `database.Connect()` **au tout début** de la fonction `main()`.
-
-> ⚠️ **Attention :** Si vous oubliez d'appeler `database.Connect()` dans le `main`, la variable `DB` restera vide (`nil`). Votre programme **crashera** (runtime error / panic) dès que vous tenterez de sauvegarder une grille à l'étape suivante.
-
-### Étape 2.3 : Envoi au serveur distant (Service)
-Dans `services/api_proxy.go`, ajoutez la fonction pour contacter l'API du professeur.
-
-```go
-// PostGridToRemote envoie les données au serveur distant
-// payload correspond à votre structure Submission
-func PostGridToRemote(payload any) ([]byte, int, error) {
-    // 1. Convertir le payload en JSON (Marshal)
-    // 2. Faire une requête POST sur ServerAPI + "/api/submit"
-    // 3. Retourner le body de la réponse et le status code
-}
+### 1. Installation des dépendances
+Ouvrez votre terminal et installez les paquets pour gérer les mots de passe et les tokens :
+```bash
+go get -u golang.org/x/crypto/bcrypt
+go get -u github.com/golang-jwt/jwt/v5
 ```
 
-### Étape 2.4 : La Soumission (Contrôleur)
-C'est le cœur du projet. Dans `controllers/pixel_controller.go`, créez la fonction `SubmitProxyGrid` (Route `POST /proxy/submit`).
+### 2. Les fichiers HTML (Templates)
+Dans votre dossier `templates/`, assurez-vous d'avoir les 4 fichiers suivants.
+*Note : `index.html` et `history.html` sont ceux que tu as fournis (avec les modifications pour gérer la redirection si non connecté), voici les deux nouveaux :*
 
-**Algorithme à implémenter :**
-
-1.  **Binding :** Récupérez le JSON dans la structure `Submission`.
-    *   Si le binding échoue (ex: nom manquant), renvoyez une erreur 400 en utilisant votre structure `APIResponse` (Success: false, Message: "Erreur...").
-2.  **Préparation :** Convertissez le champ `Grid` (tableau) en `string` (via `json.Marshal`) et stockez-le dans `GridData`.
-3.  **Sauvegarde :** Enregistrez la soumission en local avec `database.DB.Create`.
-    *   En cas d'erreur SQL, renvoyez une 500 avec `APIResponse`.
-4.  **Envoi Distant :** Appelez votre service `PostGridToRemote`.
-5.  **Réponse Final :**
-    *   Si l'envoi distant échoue, prévenez l'utilisateur mais confirmez la sauvegarde locale via un `APIResponse`.
-    *   Sinon, renvoyez directement la réponse brute reçue du serveur distant.
-
-### Étape 2.5 : L'Historique local
-Permettez à l'utilisateur de voir ses anciens dessins.
-
-1.  **API (`GetLocalHistory`)** :
-    *   Récupérez les **10 dernières soumissions** depuis la BDD (`created_at desc`).
-    *   Retournez la liste en JSON.
-    *   Route : `GET /proxy/history`.
-2.  **HTML (`RenderHistory`)** :
-    *   Affichez simplement le template `history.html`.
-    *   Route : `GET /history`.
-    
-
-
-
-
-Remplacer history.html par le fichier suivant: 
-
-```
+#### A. `templates/register.html` (Nouveau)
+```html
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Historique Pixel Art</title>
+    <title>Inscription</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
-
-        h1 { text-align: center; color: #333; }
-
-        .nav-link { display: block; text-align: center; margin-bottom: 30px; text-decoration: none; color: #3498db; font-weight: bold; }
-        .nav-link:hover { text-decoration: underline; }
-
-        /* Conteneur des cartes */
-        .gallery {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        /* Une carte individuelle */
-        .card {
-            background: white;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .card-header {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            font-size: 0.9em;
-            color: #666;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 5px;
-        }
-        .user-name { font-weight: bold; color: #333; }
-
-        /* La mini grille */
-        .mini-grid {
-            display: grid;
-            grid-template-columns: repeat(15, 10px); /* Cellules de 10px */
-            gap: 0;
-            border: 2px solid #333;
-            background: #ccc;
-        }
-
-        .mini-cell {
-            width: 10px;
-            height: 10px;
-            background-color: white;
-        }
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; }
+        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 300px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; box-sizing: border-box;}
+        button { background: #27ae60; color: white; border: none; padding: 10px; width: 100%; cursor: pointer; }
+        .error { color: red; margin-bottom: 10px; font-size: 0.9em; }
+        a { display: block; margin-top: 10px; color: #3498db; text-decoration: none; }
     </style>
 </head>
 <body>
+    <div class="card">
+        <h2>📝 Inscription</h2>
+        {{ if .error }}<div class="error">{{ .error }}</div>{{ end }}
+        <form action="/register" method="POST">
+            <input type="text" name="username" placeholder="Choisissez un pseudo" required>
+            <input type="password" name="password" placeholder="Mot de passe" required>
+            <button type="submit">S'inscrire</button>
+        </form>
+        <a href="/login">Déjà un compte ? Se connecter</a>
+    </div>
+</body>
+</html>
+```
 
-<h1>🏛️ Galerie des Œuvres</h1>
-<a href="/" class="nav-link">← Retour au jeu</a>
-
-<div class="gallery" id="gallery-container">
-    <!-- Les cartes seront injectées ici par JS -->
-    <p style="text-align:center; width:100%;">Chargement des données...</p>
-</div>
-
-<script>
-    // URL de l'API locale qu'on a créée dans l'étape précédente
-    const API_HISTORY_URL = "/proxy/history";
-
-    async function loadHistory() {
-        try {
-            const res = await fetch(API_HISTORY_URL);
-            if (!res.ok) throw new Error("Erreur réseau");
-
-            const submissions = await res.json();
-            renderGallery(submissions);
-        } catch (e) {
-            document.getElementById('gallery-container').innerHTML =
-                `<p style="color:red; text-align:center;">Impossible de charger l'historique : ${e.message}</p>`;
-        }
-    }
-
-    function renderGallery(submissions) {
-        const container = document.getElementById('gallery-container');
-        container.innerHTML = '';
-
-        if (submissions.length === 0) {
-            container.innerHTML = '<p>Aucune donnée en base.</p>';
-            return;
-        }
-
-        submissions.forEach(sub => {
-            // 1. Création de la carte
-            const card = document.createElement('div');
-            card.className = 'card';
-
-            // 2. Parsing de la date
-            const dateObj = new Date(sub.created_at);
-            const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-            // 3. En-tête de la carte
-            card.innerHTML = `
-                <div class="card-header">
-                    <span class="user-name">👤 ${sub.name}</span>
-                    <span>${dateStr}</span>
-                </div>
-            `;
-
-            // 4. Génération de la mini-grille
-            // IMPORTANT : Dans la BDD, la grille est stockée en string ("[[...]]"), il faut la parser
-            let gridData = [];
-            try {
-                // Si sub.GridData est vide, on met une grille vide
-                gridData = sub.GridData ? JSON.parse(sub.GridData) : [];
-            } catch(e) {
-                console.error("Erreur parsing grille", e);
-            }
-
-            const gridDiv = document.createElement('div');
-            gridDiv.className = 'mini-grid';
-
-            // Dessiner les 15x15 cellules
-            // Si la grille récupérée n'est pas complète, on gère l'affichage vide
-            for(let r=0; r<15; r++) {
-                for(let c=0; c<15; c++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'mini-cell';
-
-                    // On vérifie si la donnée existe à ces coordonnées
-                    if(gridData[r] && gridData[r][c]) {
-                        cell.style.backgroundColor = gridData[r][c];
-                    }
-                    gridDiv.appendChild(cell);
-                }
-            }
-
-            card.appendChild(gridDiv);
-            container.appendChild(card);
-        });
-    }
-
-    // Lancer le chargement au démarrage
-    loadHistory();
-</script>
-
+#### B. `templates/login.html` (Nouveau)
+```html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Connexion</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; }
+        .card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 300px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; box-sizing: border-box;}
+        button { background: #3498db; color: white; border: none; padding: 10px; width: 100%; cursor: pointer; }
+        .error { color: red; margin-bottom: 10px; font-size: 0.9em; }
+        a { display: block; margin-top: 10px; color: #666; text-decoration: none; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🔐 Connexion</h2>
+        {{ if .error }}<div class="error">{{ .error }}</div>{{ end }}
+        <form action="/login" method="POST">
+            <input type="text" name="username" placeholder="Pseudo" required>
+            <input type="password" name="password" placeholder="Mot de passe" required>
+            <button type="submit">Se connecter</button>
+        </form>
+        <a href="/register">Créer un compte</a>
+    </div>
 </body>
 </html>
 ```
 
 ---
 
-### ✅ Vérification
-1.  Lancez le serveur.
-    *   *Si le serveur crash immédiatement ou au moment de l'envoi, vérifiez que vous avez bien fait l'étape 2.2 point 4.*
-2.  Essayez d'envoyer un dessin **sans mettre de nom** : le message d'erreur doit s'afficher grâce à votre `APIResponse`.
-3.  Envoyez un dessin valide : vous devez recevoir le succès.
-4.  Vérifiez l'onglet "Historique local".
+## 📝 Étape 1 : Le Modèle Utilisateur (10 min)
+
+Nous devons stocker les utilisateurs en base de données.
+
+1.  Créez le fichier `models/user.go`.
+2.  Définissez une structure `User` qui hérite de `gorm.Model`.
+3.  Ajoutez les champs :
+    *   `Username` (string) : doit être unique (indice Gorm `uniqueIndex`).
+    *   `Password` (string) : stockera le **hash**, pas le clair !
+4.  Dans `database/database.go`, ajoutez `&models.User{}` dans la fonction `AutoMigrate` pour créer la table au démarrage.
+
+---
+
+## 🔐 Étape 2 : Inscription et Connexion (30 min)
+
+Créez le fichier `controllers/auth.go`. Nous allons gérer la logique d'entrée/sortie.
+
+### 2.1 Inscription (`Register`)
+Implémentez la fonction qui reçoit le formulaire POST.
+
+*   Récupérez `username` et `password` via `c.PostForm(...)`.
+*   **Sécurité :** Utilisez `bcrypt.GenerateFromPassword` pour hasher le mot de passe.
+*   Créez l'utilisateur en BDD.
+*   En cas d'erreur (ex: pseudo déjà pris), réaffichez la template `register.html` avec un message d'erreur.
+*   En cas de succès, redirigez vers `/login`.
+
+### 2.2 Connexion (`Login`)
+Implémentez la fonction qui vérifie les identifiants.
+
+*   Cherchez l'utilisateur dans la BDD par son `username`.
+*   **Vérification :** Utilisez `bcrypt.CompareHashAndPassword` pour comparer le hash stocké et le mot de passe reçu.
+*   **Création du Token :**
+    *   Utilisez la librairie `jwt-go` (v5).
+    *   Créez des `claims` (données) contenant le `username` et une date d'expiration (`exp`).
+    *   Signez le token avec une clé secrète (ex: une constante globale).
+*   **Stockage :** Placez ce token dans un **Cookie** via `c.SetCookie(...)`.
+    *   *Astuce :* Mettez `HttpOnly` à `true` pour empêcher le vol de cookie par JavaScript.
+
+```go
+// Squelette de controllers/auth.go
+var jwtKey = []byte("ma_super_cle_secrete")
+
+func Register(c *gin.Context) {
+    // TODO: Récupérer form -> Hasher password -> Sauver User -> Redirect Login
+}
+
+func Login(c *gin.Context) {
+    // TODO: Trouver User -> Comparer Hash -> Créer JWT -> SetCookie -> Redirect Home
+}
+
+func Logout(c *gin.Context) {
+    // TODO: Écraser le cookie avec une durée de vie négative -> Redirect Login
+}
+```
+
+---
+
+## 👮 Étape 3 : Middleware d'Authentification (20 min)
+
+Nous devons intercepter les requêtes pour vérifier si l'utilisateur est connecté.
+
+1.  Créez `middlewares/auth.go`.
+2.  Implémentez `AuthMiddleware() gin.HandlerFunc`.
+
+**Logique à implémenter :**
+1.  Récupérez le cookie nommé "auth_token" (`c.Cookie(...)`).
+2.  S'il n'y a pas de cookie : redirigez vers `/login` et avortez la requête (`c.Abort()`).
+3.  Parsez le token avec `jwt.Parse`.
+4.  Vérifiez si le token est valide. Si non -> Redirect login.
+5.  **Crucial :** Extrayez le `username` des claims du token et stockez-le dans le contexte Gin :
+    ```go
+    c.Set("username", claims["username"])
+    ```
+    *Cela permettra aux contrôleurs suivants de savoir QUI est connecté.*
+6.  Laissez passer la requête avec `c.Next()`.
+
+---
+
+## 🚀 Étape 4 : Adaptation des Routes et Contrôleurs (15 min)
+
+### 4.1 Mise à jour de `main.go`
+Organisez vos routes.
+*   Les routes `/login`, `/register` doivent être publiques.
+*   Les routes `/`, `/history` et `/proxy/...` doivent être dans un **Groupe** qui utilise votre middleware.
+
+### 4.2 Modification de `SubmitProxyGrid`
+Dans `controllers/pixel.go`, la fonction `SubmitProxyGrid` reçoit actuellement le nom de l'utilisateur via le JSON (`req.Name`). **C'est une faille de sécurité**, n'importe qui peut se faire passer pour un autre.
+
+1.  Modifiez la fonction pour ignorer le champ `name` du JSON.
+2.  Récupérez le vrai nom de l'utilisateur connecté via le contexte :
+    ```go
+    username, exists := c.Get("username")
+    ```
+3.  Utilisez ce `username` pour créer l'objet `Submission`.
+
+### 4.3 Modification de `RenderHome`
+L'index.html a besoin d'afficher le pseudo de l'utilisateur (`{{ .username }}`).
+Modifiez `RenderHome` pour récupérer le username du contexte (`c.Get`) et le passer à `c.HTML`.
+
+---
+
+## 🧪 Étape 5 : Test (Bonus)
+
+Lancez votre serveur (`go run .`).
+
+1.  Tentez d'aller sur `http://localhost:8081/`. Vous devriez être redirigé vers le Login.
+2.  Créez un compte "Toto".
+3.  Connectez-vous.
+4.  Sur la page de dessin, vérifiez que votre pseudo s'affiche en haut.
+5.  Dessinez et envoyez.
+6.  Vérifiez dans l'historique que c'est bien "Toto" qui a signé l'œuvre.
+7.  Essayez de modifier le code JS dans la console du navigateur pour envoyer un autre nom : le serveur doit l'ignorer et utiliser "Toto" quand même.

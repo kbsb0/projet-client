@@ -5,9 +5,18 @@
   <title>{{ .title }}</title>
   <style>
     body { font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; }
+
+    /* Barre de navigation / Déconnexion */
+    .nav-bar { width: 100%; max-width: 800px; display: flex; justify-content: flex-end; padding: 10px; }
+    .nav-bar a { text-decoration: none; color: #e74c3c; font-weight: bold; border: 1px solid #e74c3c; padding: 5px 10px; border-radius: 4px; transition: 0.3s; }
+    .nav-bar a:hover { background: #e74c3c; color: white; }
+
     .top-info { display: flex; gap: 20px; align-items: center; margin: 15px 0; }
     .timer { font-weight: bold; color: #e74c3c; font-size: 1.5em; }
-    input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+
+    /* Nouveau badge utilisateur */
+    .user-badge { background: #2c3e50; color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
     .grid-container { display: grid; grid-template-columns: repeat(15, 30px); gap: 1px; background: #ccc; border: 5px solid #333; user-select: none; }
     .cell { width: 30px; height: 30px; background: white; cursor: pointer; }
     .cell.hint { background-color: #dcdcdc; }
@@ -22,11 +31,18 @@
 </head>
 <body>
 
+<div class="nav-bar">
+  <a href="/logout">Déconnexion</a>
+</div>
+
 <h1>{{ .title }}</h1>
 
 <div class="top-info">
   <div class="timer" id="client-timer">--:--</div>
-  <input type="text" id="username" placeholder="Votre Prénom" maxlength="15">
+  <!-- MODIFICATION ICI : On affiche le username de la session -->
+  <div class="user-badge">
+    👤 {{ .username }}
+  </div>
 </div>
 
 <div class="palette">
@@ -51,6 +67,7 @@
   // Configuration
   const API_STATE_URL = "/proxy/state";
   const API_SUBMIT_URL = "/proxy/submit";
+  const CURRENT_USER = "{{ .username }}"
 
   let currentColor = '#3498db';
   let currentModelId = -1;
@@ -71,13 +88,18 @@
   // Initialisation d'une grille vide au démarrage
   drawGrid(Array(15).fill().map(() => Array(15).fill(0)));
 
-
-
   async function syncState() {
       if(syncInProgress) return;
       syncInProgress = true;
       try {
           const res = await fetch(API_STATE_URL);
+
+          // Gestion session expirée
+          if (res.status === 401) {
+             window.location.href = "/login";
+             return;
+          }
+
           if (!res.ok) throw new Error("Erreur proxy ou Serveur distant");
 
           const data = await res.json();
@@ -109,7 +131,6 @@
   // Lancer la boucle de synchro
   setInterval(countdown, 1000);
   syncState();
-
 
   // --- FONCTIONS UTILITAIRES ---
 
@@ -153,10 +174,9 @@
     document.querySelectorAll('.cell').forEach(c => c.style.backgroundColor = '');
   }
 
-  // --- PARTIE A DECOMMENTER - ETAPE 2.3 (Envoi du dessin) ---
+  // --- ENVOI DU DESSIN (Modifié) ---
   async function sendGrid() {
-    const name = document.getElementById('username').value.trim();
-    if(!name) { alert("Merci d'entrer votre prénom !"); return; }
+    // PLUS BESOIN de récupérer le nom dans l'input
 
     // Préparation des données
     let grid = [];
@@ -169,7 +189,6 @@
       grid.push(row);
     }
 
-
     const msgDiv = document.getElementById('message');
     msgDiv.innerText = "Envoi en cours...";
 
@@ -177,8 +196,15 @@
         const res = await fetch(API_SUBMIT_URL, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ grid: grid, name: name })
+            body: JSON.stringify({ grid: grid, name: CURRENT_USER })
         });
+
+        // Gestion redirection si token expiré
+        if (res.status === 401) {
+            alert("Session expirée. Veuillez vous reconnecter.");
+            window.location.href = "/login";
+            return;
+        }
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Erreur serveur");
@@ -194,7 +220,6 @@
         msgDiv.style.color = "#ff4757";
         console.error(e);
     }
-
   }
 </script>
 </body>

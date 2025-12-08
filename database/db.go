@@ -17,6 +17,6 @@ func Connect() {
 	}
 
 	// Crée la table submissions automatiquement
-	DB.AutoMigrate(&models.Submission{})
+	DB.AutoMigrate(&models.Submission{}, &models.User{})
 	log.Println("Base de données connectée.")
 }

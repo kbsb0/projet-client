@@ -3,31 +3,48 @@ package main
 import (
 	"ari2-client/controllers"
 	"ari2-client/database"
+	"ari2-client/middlewares"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-
 	database.Connect()
-	// Création du routeur avec les middlewares par défaut (logger + recovery)
 	r := gin.Default()
-
-	// Charger les templates HTML
+	r.Use(middlewares.RequestLogger()) // Votre logger de l'étape 3.1
 	r.LoadHTMLGlob("templates/*")
 
-	// Route d'accueil utilisant votre contrôleur
-	r.GET("/", controllers.RenderHome)
+	// --- ROUTES PUBLIQUES (Login/Register) ---
+	r.GET("/login", controllers.RenderLogin)
+	r.POST("/login", controllers.Login)
+	r.GET("/register", controllers.RenderRegister)
+	r.POST("/register", controllers.Register)
+	r.GET("/logout", controllers.Logout)
 
-	// Routes API
-	api := r.Group("/proxy")
+	// --- ROUTES PROTÉGÉES (Nécessitent une connexion) ---
+	// On crée un groupe qui utilise le middleware d'Auth
+	protected := r.Group("/")
+	protected.Use(middlewares.AuthMiddleware())
 	{
-		api.GET("/state", controllers.GetProxyState)
-		api.POST("/submit", controllers.SubmitProxyGrid) // <--- AJOUTER ICI
-		api.GET("/history", controllers.GetLocalHistory) // <--- AJOUTER ICI
+		// L'accueil n'est plus public : il faut être loggé pour voir la grille
+		protected.GET("/", func(c *gin.Context) {
+			// On récupère le nom de l'utilisateur depuis le middleware
+			username, _ := c.Get("username")
+			c.HTML(200, "index.html", gin.H{
+				"title": "Pixel Challenge Pro",
+				"username": username, // On l'envoie au template
+			})
+		})
+
+		protected.GET("/history", controllers.RenderHistory)
+
+		// API Proxy
+		api := protected.Group("/proxy")
+		{
+			api.GET("/state", controllers.GetProxyState)
+			api.POST("/submit", controllers.SubmitProxyGrid)
+			api.GET("/history", controllers.GetLocalHistory)
+		}
 	}
 
-	r.GET("/history", controllers.RenderHistory) // <--- AJOUTER ICI
-
-	// Lancement du serveur sur le port 8081
 	r.Run(":8081")
 }
