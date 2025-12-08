@@ -2,10 +2,13 @@ package main
 
 import (
 	"ari2-client/controllers"
+	"ari2-client/database"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+
+	database.Connect()
 	// Création du routeur avec les middlewares par défaut (logger + recovery)
 	r := gin.Default()
 
@@ -15,11 +18,15 @@ func main() {
 	// Route d'accueil utilisant votre contrôleur
 	r.GET("/", controllers.RenderHome)
 
-	// Groupe /proxy
-	proxy := r.Group("/proxy")
+	// Routes API
+	api := r.Group("/proxy")
 	{
-		proxy.GET("/state", controllers.GetProxyState)
+		api.GET("/state", controllers.GetProxyState)
+		api.POST("/submit", controllers.SubmitProxyGrid) // <--- AJOUTER ICI
+		api.GET("/history", controllers.GetLocalHistory) // <--- AJOUTER ICI
 	}
+
+	r.GET("/history", controllers.RenderHistory) // <--- AJOUTER ICI
 
 	// Lancement du serveur sur le port 8081
 	r.Run(":8081")
