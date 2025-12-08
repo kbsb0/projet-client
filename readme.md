@@ -243,3 +243,33 @@ Remplacer history.html par le fichier suivant:
 2.  Essayez d'envoyer un dessin **sans mettre de nom** : le message d'erreur doit s'afficher grâce à votre `APIResponse`.
 3.  Envoyez un dessin valide : vous devez recevoir le succès.
 4.  Vérifiez l'onglet "Historique local".
+
+
+
+
+
+### Étape 2.5 : Modification...
+
+Modifiez la fonction GetProxyState  et FetchStateFromRemote comme suit :
+
+```
+func GetProxyState(c *gin.Context) {
+body, status, _ := services.FetchStateFromRemote()
+c.Data(status, "application/json", body)
+}
+
+
+
+func FetchStateFromRemote() ([]byte, int, error) {
+    req, _ := http.NewRequest(http.MethodGet, ServerAPI+"/api/state", nil)
+    resp, _ := httpClient.Do(req)
+    defer resp.Body.Close()
+    body, _ := io.ReadAll(resp.Body)
+    return body, resp.StatusCode, nil
+}
+```
+
+Après avoir modifié le code, faites signe à l'un des étudiants animant le cours pour qu'il puisse procéder à la démo.
+
+Important : Attendez les instructions avant de continuer...
+
